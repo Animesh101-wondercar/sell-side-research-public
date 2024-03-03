@@ -115,7 +115,7 @@ def build_bofa_search_payload(
     datetime_from: datetime,
     datetime_to: datetime,
     row_count: int = 10000,
-    search_string: str = "",
+    search_string: str = " ",
 ):
     return {
         "queries": [
@@ -125,6 +125,10 @@ def build_bofa_search_payload(
                 "arguments": [
                     {
                         "field": "MLExternal",
+                        "conditions": [{"operator": "EqualTo", "values": ["TRUE"]}],
+                    },
+                    {
+                        "field": "MLInternal",
                         "conditions": [{"operator": "EqualTo", "values": ["TRUE"]}],
                     },
                     {
@@ -146,6 +150,12 @@ def build_bofa_search_payload(
                             {"operator": "EqualTo", "values": [search_string]}
                         ],
                     },
+                    # {
+                    #     "field": "FreeText",
+                    #     "conditions": [
+                    #         {"operator": "Contains", "values": [search_string]}
+                    #     ]
+                    # }
                 ],
             },
         ]
@@ -221,7 +231,7 @@ def better_search_bofa_global_research(
         print(payloads) if verbose else None
     elif just_today:
         payload = build_bofa_search_payload(
-            datetime_from=(datetime.now() - BDay(1)), datetime_to=datetime.now()
+            datetime_from=(datetime.now() - BDay(1)), datetime_to=(datetime.now() + BDay(1)), search_string=search_string
         )
     else:
         payload = build_bofa_search_payload(
@@ -411,7 +421,7 @@ def bofa_download_reports(
         "Upgrade-Insecure-Requests": "1",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
     }
-    
+
     # sanitization_failed = False
 
     async def fetch(client: httpx.AsyncClient, doc_info: DocumentInfo):
@@ -479,7 +489,7 @@ def bofa_download_reports(
             await asyncio.gather(*tasks)
 
     asyncio.run(run_fetch_all())
-    
+
     if sanitize:
         for dd in documents_dict:
             full_path = os.path.join(base_path, dd.documentDate)
@@ -487,10 +497,9 @@ def bofa_download_reports(
             files = glob.glob(pattern)
             print(" files  ", files)
             [sanitize_pdf_metadata(file) for file in files]
-    
+
     if run_clean_up:
         print("in clean up")
         for dd in documents_dict:
             full_path = os.path.join(base_path, dd.documentDate)
             delete_temp_files(full_path, verbose=verbose)
-            
